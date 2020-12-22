@@ -1,0 +1,187 @@
+---
+title: "Covid-19: Is the Lockdown Worth it? and Who Gets the Vaccine First?"
+author: Ziad Elramlawy
+date: "05/12/2020"
+output: pdf_document
+---
+
+## Abstract
+
+This analysis goes over the latest developments of Covid specifically targeting the city of Toronto. Through some modeling and testing the effectiveness of the lockdown is looked at as well as the severity of the virus. The importance of administering vaccines in a specific order will also be mentioned. The decision to lockdown Toronto must have been a difficult one for everyone as it affects many people through the shutting of small businesses. However, it is important to understand whether or not this lockdown is worth it. It is also important to look at the factors that cause death in Covid patients to know who to give the Vaccine to first.
+
+## Keywords
+
+Multiple Regression, Linear Model, T-test, Statistical Significance, Covid-19, Toronto Lockdown, Vaccination. 
+
+## Covid-19 The Main Focus of 2020
+  
+  Covid-19 has been the main focus of nearly everyone in the world in the past year. People have had many expectations, and many countries have gone about how to deal with the pandemic in multiple different ways. There are countries that have decided to not place any restrictions and try to create what known as herd immunity. Some other countries did the complete opposite by going into full lockdown and not allowing people to leave their homes. While the majority of countries decided to take a stance somewhere in the middle and create some restrictions. Data plays a major role in governments' decisions regarding Covid-19 protocol. Toronto has recently gone into lockdown and the decision was made based off of the Covid-19 data in the city. However, through analysis we can take a look at whether or not that was the right decision and if the lockdown has had any meaningful impact on the number of cases.
+  
+  In this paper I will be analyzing whether or not the lockdown has been efficient in decreasing the number of Covid-19 cases as well as they types of cases it has decreased. I will also be checking whether the lockdown was worth it by comparing the cases before and after lockdown. The data taken will range from the start of Covid-19 data collection up till the release of the latest data on Wednesday December 16th. In order to look at the causes of death amongst most of the cases as well as its trend I will be create a regression model. I will also create a hypothesis test to see if there is a significant change of Covid cases in the weeks following the lockdown. Through these two we can determine whether or not the lockdown was effective and if Toronto should add more lockdown restrictions to make it effective or go back to phase 3.
+  
+  I will begin by introducing the data set and explaining the multiple variables provided within. The data is provided in terms of unique cases so I will be providing the same data but in the form of cases per day in order to proceed with the hypotheses testing. I will create a multiple linear model with the many data points pre-lockdown, and I will attempt to create a similar model with the data points after the lockdown. I will compare the two models to see how they relate. Following that will be the testing of the hypothesis to see if there is a difference in the cases.  I will then analyze the results and see what can be concluded from the data. After that I will look at all the possible discussion points as well weaknesses found in the data or the models.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#install.packages("tidyverse")
+#install.packages("broom")
+
+library(tidyverse)
+
+data <- read.csv("/cloud/project/COVID19-cases.csv")
+
+data$Outcome.Int [data$Outcome == "FATAL"] <- 1
+data$Outcome.Int [data$Outcome == "ACTIVE"] <- 0
+data$Outcome.Int [data$Outcome == "RESOLVED"] <- 0
+data$Outcome.Int <- as.integer(data$Outcome.Int)
+
+data$Age.Group.Int [data$Age.Group == "19 and younger"] <- 0
+data$Age.Group.Int [data$Age.Group == "20 to 29 Years"] <- 1
+data$Age.Group.Int [data$Age.Group == "30 to 39 Years"] <- 2
+data$Age.Group.Int [data$Age.Group == "40 to 49 Years"] <- 3
+data$Age.Group.Int [data$Age.Group == "50 to 59 Years"] <- 4
+data$Age.Group.Int [data$Age.Group == "60 to 69 Years"] <- 5
+data$Age.Group.Int [data$Age.Group == "70 to 79 Years"] <- 6
+data$Age.Group.Int [data$Age.Group == "80 to 89 Years"] <- 7
+data$Age.Group.Int [data$Age.Group == "90 and older"] <- 8
+data$Age.Group.Int <- as.integer(data$Age.Group.Int)
+
+
+data$Client.Gender [data$Client.Gender == "UNKNOWN"] <- NA
+data$Client.Gender [data$Client.Gender == "TRANSGENDER"] <- NA
+data$Client.Gender [data$Client.Gender == "OTHER"] <- NA
+
+
+
+
+
+```
+
+```{r, echo=FALSE}
+ cases_per_day_reported <- data %>% group_by(Reported.Date) %>% tally()
+ cases_per_day_episode <- data %>% group_by(Episode.Date) %>% tally()
+ 
+ colnames(cases_per_day_reported)[colnames(cases_per_day_reported) == "n"] <- "Daily.Reported.Count"
+
+ colnames(cases_per_day_episode)[colnames(cases_per_day_episode) == "n"] <- "Daily.Episode.Count"
+  
+```
+ 
+```{r, echo=FALSE}
+
+ pre_lockdown_count <- cases_per_day_episode %>% 
+    filter(Episode.Date < as.Date("2020-11-29") & Episode.Date > as.Date("2020-11-16"))
+
+ post_lockdown_count <- cases_per_day_episode %>% 
+    filter(Episode.Date >= as.Date("2020-11-29") & Episode.Date < as.Date("2020-12-11"))
+ 
+ colnames(cases_per_day_reported)[colnames(cases_per_day_reported) == "n"] <- "Daily.Reported.Count"
+
+ colnames(cases_per_day_episode)[colnames(cases_per_day_episode) == "n"] <- "Daily.Episode.Count"
+```
+
+## Toronto Covid Cases
+
+  The data chosen is provided by Open Data Toronto and covers every reported Covid case since January 23rd, 2020 up until December 14th, 2020. Every data point corresponds to an individual, each with multiple variables. The main variables to be looked at include "Age.Group", "Reported.Date", "Episode.Date", and "Outcome". Other data variables include if the individual was "Ever.Hospitalized", "Ever.Intubated", and "Ever.in.Icu". "Age.Group" refers to the age of the person and is split into categories starting from 19 and under, and 20 to 29, up until 90 and older. "Reported.Date" refers to the date that the case was reported, while "Episode.Date" refers to the date that the person began feeling Covid symptoms. Outcome refers whether the person is still alive or has died.
+  
+  I have added two additional columns that take the age group and organize it by number starting with 0 to represent those 19 and younger up to the number 8 representing the age group 90 and older. This was done in order to make the data is easier to use and analyze. The data outcome variable has also been updated to change all unknown outcomes to represent still alive. This was also done in order to make the data easier to use and analyze. Additionally, data was extracted from data frame to create a count of cases per day based on episode date as well as reported date. Those two new data frame as "cases_per_day_episode" and "cases_per_day_reported" respectively. All data after December 13th was removed due to the fact that data is constantly updated and the days after December 13th did not include possible cases where the episode date would have still been recorded. Data was then extracted from the cases_per_day_episode data frame to create data representing 11 days before the 29th of November and 11 Days after the 29th of November. This represents pre-lockdown and post-lockdown cases counted. The lockdown began on the 23rd of November however the WHO claim that the average amount of time for cases to show is 6 days which means the average period in which cases should be affected should start 6 days after the 23rd.
+  
+  A multiple linear regression will be used to determine the correlations between certain factors and an outcome of death due to Covid. The formula for this is a multiple linear regression, and each beta value represents the average increase of the y variable when a corresponding x variable increases by one unit. The $\epsilon_{i}$ at the end is the error term and represents the margin of error. This model will look at the correlation of some variables that would seem to be related to Covid deaths. This multiple regression should display the average change in likelihood of death depending on the average change in factors such as gender, age, and hospitalization.
+
+Below is the formula used to form the regression model:
+
+$y_{i} = \beta_{0}+Age.Group.Intx_{1i}+Client.GenderMALEx_{2i}+Ever.HospitalizedYesx_{3i} + \epsilon_{i}$
+
+After the multiple linear regression we will be comparing the Covid numbers of the days before and after the lockdown. This is in order to see if there is a significant difference between the averages using a t-test. 
+
+
+
+# Data Modeling Results
+
+Before looking at the models it is important to get a good idea about some basic elements of the Covid cases in Toronto. Below is a barplot of the number of Covid cases depending on the source of infection.
+
+```{r echo=FALSE}
+data %>% 
+ggplot(aes(x = Source.of.Infection)) +
+  geom_bar() + theme(axis.text.x = element_text(angle = 90)) + 
+  ggtitle("Sources of Covid-19 Infections") +
+  xlab("Source of Infection") +
+  ylab("Number of Confirmed Infections") 
+
+```
+
+## 2020 Toronto Covid Trend 
+
+The bar plot below displays the number of Covid cases per day starting from January up to December. It is meant to show the fluctuation of Covid cases and the path that the numbers have taken. It is important to notice that there is clearly an increase in cases that occurred in the last 3 months of the year. This is commonly referred to as the "Second Wave" which is essentially another peak of Covid cases following the peak that occurred earlier on in the year.
+
+
+```{r, echo=FALSE}
+data %>% 
+ggplot(aes(x = Episode.Date)) +
+  geom_bar() +
+  ggtitle("Number of Daily Infections") +
+  xlab("Episode Date") +
+  ylab("Number of Cases") +
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+```
+
+## How Likely is a Covid Death?
+
+
+A multiple linear model was created using a specific set of variables. In order to determine what variables were to be used it was important to look at what could affect Covid deaths. All of the x variables show very low p-values meaning that there is a statistically significant correlation between that variable and the outcome. It is important to notice that the Y variable is the outcome and is either 1 for death or 0 for resolved. The first variable being looked at is Age.Group.Int which is the age groups the Covid participants separated by groups of 10 years. Each age group has been assigned a number from 0-8 and based on the model we see a correlation. For every 10 year age increase we see an average increase of probability of death by .022 when all other variables are fixed at a constant value. The second variable which was 1 if male and 0 if female, showed an average increase of .004 in the probability of death given that the individual is male given that the other variables were constant. Finally, this had the lowest p-value and the variable was if the individual was ever hospitalized. This variable was .165 which tells us that given that someone was hospitalize they are on average .165 percent more likely to die due to Covid than someone who is has not been hospitalized, given that all other variables are fixed.
+
+Below is the formula created from regression model:
+
+$y_{i} = \beta_{0}+.0223x_{1i}+.0044x_{2i}+.1650x_{3i} + \epsilon_{i}$
+
+
+```{r, echo=FALSE}
+
+Model<- lm(formula = Outcome.Int ~ Age.Group.Int + Client.Gender + Ever.Hospitalized, data = data)
+
+broom::tidy(Model)
+```
+
+## How Effective was The Lockdown?
+
+After separating the data into the 13 days after the 29th of November and the 13 days before we can look at whether there is a difference between the number of average cases. Below is the average daily count for pre lockdown and post lockdown. The pre-lockdown count is an average of approximately 509 cases per day as opposed to the post-lockdown number of 443 cases per day.
+
+```{r, echo=FALSE}
+
+summary(pre_lockdown_count)
+summary(post_lockdown_count)
+
+```
+
+It is important to test whether there is a statistical significance between the two means. A t-test with an alternative hypothesis checking if the post-lockdown cases are smaller than the pre-lockdown ones returns the following information below. With a p-value smaller than .01 we can reject the null that there was no effect and say with 95% confidence that there is a a smaller number of cases by at least 24 cases per day on average. 
+
+
+```{r, echo=FALSE}
+
+t.test(post_lockdown_count$Daily.Episode.Count, y = pre_lockdown_count$Daily.Episode.Count, alternative = c("less"), mu = 0, paired =
+FALSE, var.equal = FALSE, conf.level = 0.95)
+
+
+```
+
+
+
+
+## What Have We Learned?
+
+All in all, it is still clear that there is a strong correlation between factors such as age and number of deaths which is nothing new. This should just reaffirm the importance of vaccinations going out to the elderly first before the they reach youth. In terms of the lockdown, it is important to compare the pros and cons of the lockdown. There was a significant difference between the number of cases before and after the lockdown, however the number is not as large as I would have guessed. This could be due to many reasons some of which include the fact that people could just not be following lockdown rules. Essentially the main difference between the red zone, and the grey lockdown stage is that people can no longer dine outdoors, and that people can no longer shop indoors at non-essential stores. However, restaurants and food chains still do offer in-store pick-up and many grocery stores could still be relatively packed. It can be argued that if Toronto really do want to drastically decrease cases the city should more strictly enforce the rules set in place and create harsher guidelines for the number of people in essential stores and restaurants at once. If the City will be closing down small businesses, they should at least make the lockdown effective enough to make it worth it. With that being said, the lockdown is still a good way of preventing deaths and if it comes at a cost of temporary business closures, I would argue that it is for the better.
+
+The main weakness that is present in the data is the fact that there were only 11 days used to assess the average number of cases post-Covid due to lockdown being recent. With more time the statistical significance of the lockdown should be more visible. Additionally, there must be many asymptomatic cases that have not been taken into consideration. To counter this issue the number of tests takes before the lockdown and after the lockdown should be looked at. This analysis should be repeated a week before the end of the next lockdown which will provide much more data and allow for a more informative model.
+
+
+
+## References
+
+Coronavirus disease (COVID-19). (n.d.). Retrieved from https://www.who.int/news-room/q-a-detail/coronavirus-disease-covid-19Open Data Dataset. (n.d.). Retrieved from https://open.toronto.ca/dataset/covid-19-cases-in-toronto/
+
+Open Data Dataset. (n.d.). Retrieved from https://open.toronto.ca/dataset/covid-19-cases-in-toronto/
